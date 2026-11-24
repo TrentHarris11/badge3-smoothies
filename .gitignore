@@ -1,0 +1,6 @@
+# Never commit Snowflake credentials or Streamlit Cloud secrets.
+.streamlit/secrets.toml
+.env
+.env.*
+__pycache__/
+*.py[cod]
