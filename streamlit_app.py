@@ -38,34 +38,27 @@ ingredients_list = st.multiselect(
 if ingredients_list:
     ingredients_string = " ".join(ingredients_list) + " "
 
-    for fruit_chosen in ingredients_list:
 
-        # Find the API search value for the chosen fruit
+    for fruit_chosen in ingredients_list:
         search_on = pd_df.loc[
             pd_df["FRUIT_NAME"] == fruit_chosen,
             "SEARCH_ON"
         ].iloc[0]
-
-        # Temporary output to verify the lookup
-        st.write(
-            "The search value for",
-            fruit_chosen,
-            "is",
-            search_on
-        )
-
+    
+        # st.write("The search value for", fruit_chosen, "is", search_on)
+    
         st.subheader(f"{fruit_chosen} Nutrition Information")
-
-        # API call will be updated in Finishing Touches
+    
         smoothiefroot_response = requests.get(
-            "https://my.smoothiefroot.com/api/fruit/" + fruit_chosen
+            f"https://my.smoothiefroot.com/api/fruit/{search_on}"
         )
-
+    
         st.dataframe(
             data=smoothiefroot_response.json(),
             use_container_width=True
         )
-
+        
+    # Submit the smoothie order to Snowflake
     if st.button("Submit Order"):
         session.sql(
             "INSERT INTO SMOOTHIES.PUBLIC.ORDERS "
@@ -73,6 +66,5 @@ if ingredients_list:
             params=[ingredients_string, name_on_order],
         ).collect()
 
-        st.success(
-            f"Your Smoothie is ordered, {name_on_order}!"
-        )
+        st.success(f"Your Smoothie is ordered, {name_on_order}!")
+
