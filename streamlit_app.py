@@ -1,7 +1,10 @@
 """Snowflake Badge 3: smoothie ordering app for Streamlit Community Cloud."""
 
+
 import streamlit as st
+import requests
 from snowflake.snowpark.functions import col
+
 
 st.title("🥤 Customize Your Smoothie! 🥤")
 st.write("Choose the fruits you want in your custom Smoothie!")
@@ -41,16 +44,27 @@ if ingredients_list:
         ).collect()
         st.success(f"Your Smoothie is ordered, {name_on_order}!")
 
-# Display SmoothieFroot nutrition information
-import requests
 
-smoothiefroot_response = requests.get(
-    "https://my.smoothiefroot.com/api/fruit/watermelon"
-)
+if ingredients_list:
+    ingredients_string = " ".join(ingredients_list) + " "
 
+    for fruit_chosen in ingredients_list:
+        smoothiefroot_response = requests.get(
+            "https://my.smoothiefroot.com/api/fruit/watermelon"
+        )
 
-sf_df = st.dataframe(
-    data=smoothiefroot_response.json(),
-    use_container_width=True
-)
+        sf_df = st.dataframe(
+            data=smoothiefroot_response.json(),
+            use_container_width=True
+        )
+
+    if st.button("Submit Order"):
+        session.sql(
+            "INSERT INTO SMOOTHIES.PUBLIC.ORDERS "
+            "(INGREDIENTS, NAME_ON_ORDER) VALUES (?, ?)",
+            params=[ingredients_string, name_on_order],
+        ).collect()
+
+        st.success(f"Your Smoothie is ordered, {name_on_order}!")
+
 
