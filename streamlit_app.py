@@ -1,8 +1,9 @@
 
-"""Snowflake Badge 3: smoothie ordering app for Streamlit Community Cloud."""
+"""Snowflake Badge 3: Smoothie Order Form."""
 
 import streamlit as st
 import requests
+import pandas as pd
 from snowflake.snowpark.functions import col
 
 st.title("🥤 Customize Your Smoothie! 🥤")
@@ -15,17 +16,19 @@ st.write("The name on your Smoothie will be:", name_on_order)
 connection = st.connection("snowflake")
 session = connection.session()
 
-# Load available fruits from Snowflake
-fruit_rows = (
+# Retrieve both the display name and API search name
+my_dataframe = (
     session.table("SMOOTHIES.PUBLIC.FRUIT_OPTIONS")
-    .select(col("FRUIT_NAME"))
+    .select(col("FRUIT_NAME"), col("SEARCH_ON"))
     .sort(col("FRUIT_NAME"))
-    .collect()
 )
 
-fruit_options = [row["FRUIT_NAME"] for row in fruit_rows]
+# Convert Snowpark DataFrame to Pandas
+pd_df = my_dataframe.to_pandas()
 
-# Allow users to select up to five fruits
+# Use friendly fruit names in the dropdown
+fruit_options = pd_df["FRUIT_NAME"].tolist()
+
 ingredients_list = st.multiselect(
     "Choose up to 5 ingredients:",
     fruit_options,
@@ -35,20 +38,34 @@ ingredients_list = st.multiselect(
 if ingredients_list:
     ingredients_string = " ".join(ingredients_list) + " "
 
-    # Retrieve nutrition information for each selected fruit
     for fruit_chosen in ingredients_list:
+
+        # Find the API search value for the chosen fruit
+        search_on = pd_df.loc[
+            pd_df["FRUIT_NAME"] == fruit_chosen,
+            "SEARCH_ON"
+        ].iloc[0]
+
+        # Temporary output to verify the lookup
+        st.write(
+            "The search value for",
+            fruit_chosen,
+            "is",
+            search_on
+        )
+
         st.subheader(f"{fruit_chosen} Nutrition Information")
 
+        # API call will be updated in Finishing Touches
         smoothiefroot_response = requests.get(
             "https://my.smoothiefroot.com/api/fruit/" + fruit_chosen
         )
 
-        sf_df = st.dataframe(
+        st.dataframe(
             data=smoothiefroot_response.json(),
             use_container_width=True
         )
 
-    # Submit the smoothie order to Snowflake
     if st.button("Submit Order"):
         session.sql(
             "INSERT INTO SMOOTHIES.PUBLIC.ORDERS "
@@ -56,4 +73,6 @@ if ingredients_list:
             params=[ingredients_string, name_on_order],
         ).collect()
 
-        st.success(f"Your Smoothie is ordered, {name_on_order}!")
+        st.success(
+            f"Your Smoothie is ordered, {name_on_order}!"
+        )
